@@ -5,16 +5,12 @@ yarn-debug.log*
 yarn-error.log*
 
 # Environment Variables
-.env
-.env.local
-.env.production
 
 # OS Files
 .DS_Store
 Thumbs.db
 
 # IDE Files
-.vscode/
 .idea/
 *.swp
 *.swo
@@ -31,3 +27,8 @@ build/
 # Temporary files
 tmp/
 temp/
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore
+config.bat
