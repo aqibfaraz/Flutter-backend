@@ -1,13 +1,12 @@
 // Import Mongoose library for MongoDB operations
 const mongoose = require('mongoose');
 
-// Define the User Schema with required fields
+// Define the User Schema with all required fields for Buyer and Seller
 const userSchema = new mongoose.Schema({
-  name: {
+  role: {
     type: String,
-    required: [true, 'Name is required'],
-    trim: true,
-    minlength: [2, 'Name must be at least 2 characters long']
+    required: [true, 'Role is required'],
+    enum: ['Buyer', 'Seller'],
   },
   email: {
     type: String,
@@ -17,6 +16,58 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address']
   },
+  password: {
+    type: String,
+    required: [true, 'Password is required'],
+    minlength: [6, 'Password must be at least 6 characters long']
+  },
+  
+  // Buyer-specific fields
+  bname: {
+    type: String,
+    trim: true
+  },
+  blocation: {
+    type: String,
+    trim: true
+  },
+  bborn: {
+    type: String,
+    trim: true
+  },
+  bgender: {
+    type: String,
+    trim: true
+  },
+  bcountry: {
+    type: String,
+    trim: true
+  },
+  bphone: {
+    type: String,
+    trim: true
+  },
+  
+  // Seller-specific fields
+  sname: {
+    type: String,
+    trim: true
+  },
+  slocation: {
+    type: String,
+    trim: true
+  },
+  sdescription: {
+    type: String,
+    trim: true
+  },
+  
+  // Profile image path
+  imagePath: {
+    type: String,
+    default: ''
+  },
+  
   createdAt: {
     type: Date,
     default: Date.now

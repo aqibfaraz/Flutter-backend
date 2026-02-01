@@ -33,16 +33,14 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // MongoDB Connection
 // ============================================
 
-// Get MongoDB connection string from environment variable or use default
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://aaqibali198_db_user:aqib786@cluster0.a6acsah.mongodb.net/myDatabase';
-
 // Connect to MongoDB Atlas
-mongoose.connect(MONGODB_URI)
-.then(() => {
-  console.log('✅ Connected to MongoDB Atlas successfully!');
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
 })
-.catch((error) => {
-  console.error('❌ MongoDB connection error:', error.message);
+.then(() => console.log('✅ MongoDB Connected Successfully'))
+.catch(err => {
+  console.log('❌ MongoDB Connection Error:', err);
   process.exit(1); // Exit if database connection fails
 });
 
@@ -67,19 +65,52 @@ app.get('/', (req, res) => {
 });
 
 // ============================================
-// 1. POST /addUser - Add a new user
+// 1. POST /addUser - Add a new user (Buyer/Seller Signup)
 // ============================================
 app.post('/addUser', async (req, res) => {
   try {
-    // Extract name and email from request body
-    const { name, email } = req.body;
+    // Extract fields from request body
+    const { 
+      role, email, password,
+      bname, blocation, bborn, bgender, bcountry, bphone,
+      sname, slocation, sdescription,
+      imagePath
+    } = req.body;
 
     // Validate required fields
-    if (!name || !email) {
+    if (!role || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Name and email are required fields'
+        message: 'Role, email and password are required fields'
       });
+    }
+
+    // Validate role
+    if (role !== 'Buyer' && role !== 'Seller') {
+      return res.status(400).json({
+        success: false,
+        message: 'Role must be either Buyer or Seller'
+      });
+    }
+
+    // Validate Buyer fields
+    if (role === 'Buyer') {
+      if (!bname || !blocation || !bphone) {
+        return res.status(400).json({
+          success: false,
+          message: 'Buyer requires: name, location, and phone'
+        });
+      }
+    }
+
+    // Validate Seller fields
+    if (role === 'Seller') {
+      if (!sname || !slocation) {
+        return res.status(400).json({
+          success: false,
+          message: 'Seller requires: store name and location'
+        });
+      }
     }
 
     // Check if user with this email already exists
@@ -91,11 +122,30 @@ app.post('/addUser', async (req, res) => {
       });
     }
 
-    // Create new user
+    // Create new user object
     const newUser = new User({
-      name,
-      email
+      role,
+      email,
+      password, // Note: In production, hash this password!
+      imagePath: imagePath || ''
     });
+
+    // Add buyer-specific fields
+    if (role === 'Buyer') {
+      newUser.bname = bname;
+      newUser.blocation = blocation;
+      newUser.bborn = bborn || '';
+      newUser.bgender = bgender || '';
+      newUser.bcountry = bcountry || '';
+      newUser.bphone = bphone;
+    }
+
+    // Add seller-specific fields
+    if (role === 'Seller') {
+      newUser.sname = sname;
+      newUser.slocation = slocation;
+      newUser.sdescription = sdescription || '';
+    }
 
     // Save user to database
     const savedUser = await newUser.save();
@@ -103,11 +153,14 @@ app.post('/addUser', async (req, res) => {
     // Send success response
     res.status(201).json({
       success: true,
-      message: 'User added successfully',
+      message: 'User registered successfully',
+      user_id: savedUser._id,
       data: {
         id: savedUser._id,
-        name: savedUser.name,
+        role: savedUser.role,
         email: savedUser.email,
+        bname: savedUser.bname,
+        sname: savedUser.sname,
         createdAt: savedUser.createdAt
       }
     });
@@ -149,18 +202,18 @@ app.get('/users', async (req, res) => {
 });
 
 // ============================================
-// 3. POST /login - Authenticate user by email
+// 3. POST /login - Authenticate user by email and password
 // ============================================
 app.post('/login', async (req, res) => {
   try {
-    // Extract email from request body
-    const { email } = req.body;
+    // Extract email and password from request body
+    const { email, password } = req.body;
 
     // Validate email field
-    if (!email) {
+    if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email is required for login'
+        message: 'Email and password are required for login'
       });
     }
 
@@ -175,16 +228,48 @@ app.post('/login', async (req, res) => {
       });
     }
 
+    // Verify password (Note: In production, compare hashed passwords)
+    if (user.password !== password) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid password'
+      });
+    }
+
+    // Prepare response data based on role
+    const responseData = {
+      id: user._id,
+      role: user.role,
+      email: user.email,
+      createdAt: user.createdAt
+    };
+
+    // Add buyer-specific data
+    if (user.role === 'Buyer') {
+      responseData.bname = user.bname;
+      responseData.blocation = user.blocation;
+      responseData.bborn = user.bborn;
+      responseData.bgender = user.bgender;
+      responseData.bcountry = user.bcountry;
+      responseData.bphone = user.bphone;
+    }
+
+    // Add seller-specific data
+    if (user.role === 'Seller') {
+      responseData.sname = user.sname;
+      responseData.slocation = user.slocation;
+      responseData.sdescription = user.sdescription;
+    }
+
+    // Add image path
+    responseData.imagePath = user.imagePath;
+
     // Send success response with user data
     res.status(200).json({
       success: true,
       message: 'Login successful',
-      data: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        createdAt: user.createdAt
-      }
+      user_id: user._id,
+      data: responseData
     });
 
   } catch (error) {
